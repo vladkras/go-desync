@@ -20,7 +20,6 @@ You can avoid delays and shutdowns by delegating all request to desynchronizer. 
 
 ## TODO
  * Tests
- * Docker image
  * Callback url
  * Additional custom headers: (retry, ttl, etc.)
 

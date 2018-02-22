@@ -53,7 +53,6 @@ func (m message) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	m.headers = r.Header
 
 	if debug {
-		log.Printf("Recived Body: %s\n", b)
 		log.Printf("Request: %v\n", m)
 	}
 	// send message to channel
@@ -77,8 +76,6 @@ func main() {
 		r := m.send()
 		if debug {
 			log.Printf("Response: %v\n", r)
-			b, _ := ioutil.ReadAll(r.Body)
-			log.Printf("Body: %s\n", b)
 		}
 	}
 }
