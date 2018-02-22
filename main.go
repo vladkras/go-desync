@@ -1,20 +1,21 @@
 package main
 
 import (
+	"bytes"
 	"flag"
+	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
-	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
 )
 
 type message struct {
-	data   url.Values
-	url    string
-	method string
+	body    []byte
+	url     string
+	method  string
+	headers http.Header
 }
 
 var q = make(chan message)
@@ -25,13 +26,15 @@ func (m message) send() *http.Response {
 	var client = &http.Client{
 		Timeout: time.Second * 10,
 	}
-	req, err := http.NewRequest(m.method, m.url, strings.NewReader(m.data.Encode()))
-	if err != nil && debug {
+
+	req, err := http.NewRequest(m.method, m.url, bytes.NewReader(m.body))
+	if err != nil {
 		log.Printf("%v\n", err)
 	}
+	req.Header = m.headers
 
 	resp, err := client.Do(req)
-	if err != nil && debug {
+	if err != nil {
 		log.Printf("%v\n", err)
 	}
 
@@ -39,11 +42,25 @@ func (m message) send() *http.Response {
 }
 
 func handle(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
+
 	params := mux.Vars(r)
-	m := message{url: params["url"] + "?" + r.URL.Query().Encode(), data: r.Form, method: r.Method}
+
+	u := params["url"]
+
+	if len(r.URL.Query()) > 0 {
+		u = u + "?" + r.URL.Query().Encode()
+	}
+
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("%v\n", err)
+	}
+	defer r.Body.Close()
+
+	m := message{url: u, body: b, method: r.Method, headers: r.Header}
 
 	if debug {
+		log.Printf("Recived Body: %s\n", b)
 		log.Printf("Request: %v\n", m)
 	}
 	// send message to channel
@@ -65,9 +82,11 @@ func main() {
 
 	go serve(port)
 	for m := range q {
-		resp := m.send()
+		r := m.send()
 		if debug {
-			log.Printf("Response: %v\n", resp)
+			log.Printf("Response: %v\n", r)
+			b, _ := ioutil.ReadAll(r.Body)
+			log.Printf("Body: %s\n", b)
 		}
 	}
 }

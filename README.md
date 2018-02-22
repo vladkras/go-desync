@@ -22,7 +22,6 @@ You can avoid delays and shutdowns by delegating all request to desynchronizer. 
  * Tests
  * Docker image
  * Callback url
- * Header forwarding (for Basic Auth, API keys, etc.)
  * Additional custom headers: (retry, ttl, etc.)
 
 ## License
