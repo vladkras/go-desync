@@ -7,8 +7,6 @@ import (
 	"log"
 	"net/http"
 	"time"
-
-	"github.com/gorilla/mux"
 )
 
 type message struct {
@@ -41,15 +39,7 @@ func (m message) send() *http.Response {
 	return resp
 }
 
-func handle(w http.ResponseWriter, r *http.Request) {
-
-	params := mux.Vars(r)
-
-	u := params["url"]
-
-	if len(r.URL.Query()) > 0 {
-		u = u + "?" + r.URL.Query().Encode()
-	}
+func (m message) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -57,7 +47,10 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	m := message{url: u, body: b, method: r.Method, headers: r.Header}
+	m.url = r.URL.String()[1:]
+	m.body = b
+	m.method = r.Method
+	m.headers = r.Header
 
 	if debug {
 		log.Printf("Recived Body: %s\n", b)
@@ -68,9 +61,8 @@ func handle(w http.ResponseWriter, r *http.Request) {
 }
 
 func serve(port string) {
-	r := mux.NewRouter().SkipClean(true)
-	r.HandleFunc("/{url:.*}", handle)
-	log.Fatal(http.ListenAndServe(":"+string(port), r))
+	m := message{}
+	log.Fatal(http.ListenAndServe(":"+string(port), m))
 }
 
 func main() {
