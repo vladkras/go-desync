@@ -19,7 +19,6 @@ You can avoid delays and shutdowns by delegating all request to desynchronizer. 
  Desynchronizer **always** returns `200 OK` status even if your path or data is senseless.
 
 ## TODO
- * Tests
  * Callback url
  * Additional custom headers: (retry, ttl, etc.)
 

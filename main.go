@@ -9,18 +9,19 @@ import (
 	"time"
 )
 
-type message struct {
-	body    []byte
+type Message struct {
 	url     string
 	method  string
 	headers http.Header
+	body    []byte
 }
 
-var q = make(chan message)
-var debug bool
-var port string
+type Dummy struct{}
 
-func (m message) send() *http.Response {
+var q = make(chan Message)
+var debug bool
+
+func (m *Message) send() *http.Response {
 	var client = &http.Client{
 		Timeout: time.Second * 10,
 	}
@@ -39,7 +40,11 @@ func (m message) send() *http.Response {
 	return resp
 }
 
-func (m message) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (d Dummy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	if r.URL.String() == "/" {
+		return
+	}
 
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -47,24 +52,23 @@ func (m message) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	m.url = r.URL.String()[1:]
-	m.body = b
-	m.method = r.Method
-	m.headers = r.Header
+	m := Message{r.URL.String()[1:], r.Method, r.Header, b}
 
 	if debug {
 		log.Printf("Request: %v\n", m)
 	}
-	// send message to channel
+	// send Message to channel
 	q <- m
 }
 
 func serve(port string) {
-	m := message{}
-	log.Fatal(http.ListenAndServe(":"+string(port), m))
+	log.Fatal(http.ListenAndServe(":"+string(port), Dummy{}))
+	log.Println("Start...")
 }
 
 func main() {
+
+	var port string
 
 	flag.BoolVar(&debug, "debug", false, "enable verbose logging")
 	flag.StringVar(&port, "port", "8080", "port to listen")
