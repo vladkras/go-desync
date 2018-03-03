@@ -1,13 +1,15 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
-func TestMessage(t *testing.T) {
-	handler := &Dummy{}
+func TestServer(t *testing.T) {
+
+	handler := &Desync{}
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
@@ -15,6 +17,16 @@ func TestMessage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if resp.StatusCode != 200 {
+		t.Fatalf("Received non-200 response: %d\n", resp.StatusCode)
+	}
+
+	log.Printf("%T: %v\n", handler.q, handler.q)
+}
+
+func TestMessage(t *testing.T) {
+	m := &Message{"https://ya.ru", "GET", nil, nil}
+	resp := m.send()
 	if resp.StatusCode != 200 {
 		t.Fatalf("Received non-200 response: %d\n", resp.StatusCode)
 	}

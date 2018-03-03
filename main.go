@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -16,10 +17,10 @@ type Message struct {
 	body    []byte
 }
 
-type Dummy struct{}
-
-var q = make(chan Message)
-var debug bool
+type Desync struct {
+	q     chan Message
+	debug bool
+}
 
 func (m *Message) send() *http.Response {
 	var client = &http.Client{
@@ -40,7 +41,7 @@ func (m *Message) send() *http.Response {
 	return resp
 }
 
-func (d Dummy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (d Desync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if r.URL.String() == "/" {
 		return
@@ -54,32 +55,41 @@ func (d Dummy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	m := Message{r.URL.String()[1:], r.Method, r.Header, b}
 
-	if debug {
-		log.Printf("Request: %v\n", m)
+	if d.debug {
+		log.Printf("%T: %v\n", m, m)
 	}
 	// send Message to channel
-	q <- m
+	d.q <- m
 }
 
-func serve(port string) {
-	log.Fatal(http.ListenAndServe(":"+string(port), Dummy{}))
-	log.Println("Start...")
+func (d Desync) serve(port string, wg *sync.WaitGroup) {
+	defer wg.Done()
+	log.Fatal(http.ListenAndServe(":"+port, d))
+}
+
+func (d *Desync) readChan(wg *sync.WaitGroup) {
+	defer wg.Done()
+	for m := range d.q {
+		r := m.send()
+		if d.debug {
+			log.Printf("%T: %v\n", r, r)
+		}
+	}
 }
 
 func main() {
 
 	var port string
+	var wg sync.WaitGroup
+	var d = Desync{make(chan Message), false}
 
-	flag.BoolVar(&debug, "debug", false, "enable verbose logging")
+	flag.BoolVar(&d.debug, "debug", false, "enable verbose logging")
 	flag.StringVar(&port, "port", "8080", "port to listen")
 
 	flag.Parse()
 
-	go serve(port)
-	for m := range q {
-		r := m.send()
-		if debug {
-			log.Printf("Response: %v\n", r)
-		}
-	}
+	wg.Add(2)
+	go d.serve(port, &wg)
+	go d.readChan(&wg)
+	wg.Wait()
 }
