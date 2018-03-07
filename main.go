@@ -15,6 +15,7 @@ type Message struct {
 	method  string
 	headers http.Header
 	body    []byte
+	debug   bool
 }
 
 type Desync struct {
@@ -38,6 +39,10 @@ func (m *Message) send() *http.Response {
 		log.Printf("%v\n", err)
 	}
 
+	if m.debug {
+		log.Printf("%T: %v\n", resp, resp)
+	}
+
 	return resp
 }
 
@@ -53,7 +58,7 @@ func (d Desync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	m := Message{r.URL.String()[1:], r.Method, r.Header, b}
+	m := Message{r.URL.String()[1:], r.Method, r.Header, b, d.debug}
 
 	if d.debug {
 		log.Printf("%T: %v\n", m, m)
@@ -70,10 +75,7 @@ func (d Desync) serve(port string, wg *sync.WaitGroup) {
 func (d *Desync) readChan(wg *sync.WaitGroup) {
 	defer wg.Done()
 	for m := range d.q {
-		r := m.send()
-		if d.debug {
-			log.Printf("%T: %v\n", r, r)
-		}
+		go m.send()
 	}
 }
 

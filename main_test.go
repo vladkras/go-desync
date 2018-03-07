@@ -25,7 +25,7 @@ func TestServer(t *testing.T) {
 }
 
 func TestMessage(t *testing.T) {
-	m := &Message{"https://ya.ru", "GET", nil, nil}
+	m := &Message{"https://ya.ru", "GET", nil, nil, true}
 	resp := m.send()
 	if resp.StatusCode != 200 {
 		t.Fatalf("Received non-200 response: %d\n", resp.StatusCode)
