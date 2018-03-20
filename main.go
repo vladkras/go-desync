@@ -10,19 +10,22 @@ import (
 	"time"
 )
 
+// Message for channel
 type Message struct {
-	url     string
+	url     string // /http(s)://url without 1st /
 	method  string
 	headers http.Header
 	body    []byte
 	debug   bool
 }
 
+// Desync main object
 type Desync struct {
 	q     chan Message
 	debug bool
 }
 
+// send Message body and headers to url using method
 func (m *Message) send() *http.Response {
 	var client = &http.Client{
 		Timeout: time.Second * 10,
@@ -34,6 +37,8 @@ func (m *Message) send() *http.Response {
 	}
 	req.Header = m.headers
 
+	// Prvent remote server from keeping connection alive
+	req.Close = true
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("%v\n", err)
@@ -43,11 +48,15 @@ func (m *Message) send() *http.Response {
 		log.Printf("%T: %v\n", resp, resp)
 	}
 
+	// explicitly close body to avoid leaks
+	resp.Body.Close()
 	return resp
 }
 
+// ServeHTTP : Creates Message from incoming HTTP reuqest and pushes to channel
 func (d Desync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
+	// nothing to send so return default response: 200 OK
 	if r.URL.String() == "/" {
 		return
 	}
@@ -67,11 +76,13 @@ func (d Desync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	d.q <- m
 }
 
+// HTTP Listner
 func (d Desync) serve(port string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	log.Fatal(http.ListenAndServe(":"+port, d))
 }
 
+// Recieves Message from channel and executes send()
 func (d *Desync) readChan(wg *sync.WaitGroup) {
 	defer wg.Done()
 	for m := range d.q {
@@ -90,6 +101,7 @@ func main() {
 
 	flag.Parse()
 
+	// One for server and one for reader
 	wg.Add(2)
 	go d.serve(port, &wg)
 	go d.readChan(&wg)
