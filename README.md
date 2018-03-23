@@ -1,6 +1,6 @@
 # Request Desynchronizer
 
-![coverage: 25%](https://img.shields.io/badge/coverage-25%25-orange.svg)
+![coverage: 47%](https://img.shields.io/badge/coverage-47%25-yellow.svg)
 
 ## What is "desynchronizer"?
 Modern apps make multiple HTTP request during their life-cycle: loading data, querying databases, sending notifications, calling APIs. All this actions together require a decent amount of time and may slow down or even completely freeze your app if some services are broken or unreachable.

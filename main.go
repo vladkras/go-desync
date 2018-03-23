@@ -21,7 +21,7 @@ type Message struct {
 
 // Desync main object
 type Desync struct {
-	q     chan Message
+	q     chan *Message
 	debug bool
 }
 
@@ -67,7 +67,7 @@ func (d Desync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	m := Message{r.URL.String()[1:], r.Method, r.Header, b, d.debug}
+	m := &Message{r.URL.String()[1:], r.Method, r.Header, b, d.debug}
 
 	if d.debug {
 		log.Printf("%T: %v\n", m, m)
@@ -94,7 +94,7 @@ func main() {
 
 	var port string
 	var wg sync.WaitGroup
-	var d = Desync{make(chan Message), false}
+	var d = Desync{make(chan *Message), false}
 
 	flag.BoolVar(&d.debug, "debug", false, "enable verbose logging")
 	flag.StringVar(&port, "port", "8080", "port to listen")

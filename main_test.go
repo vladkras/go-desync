@@ -1,31 +1,61 @@
 package main
 
 import (
-	"log"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
+	"time"
 )
 
 func TestServer(t *testing.T) {
 
 	handler := &Desync{}
+
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
-	resp, err := http.Get("http://localhost:8080/")
+	resp, err := http.Get(server.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if resp.StatusCode != 200 {
 		t.Fatalf("Received non-200 response: %d\n", resp.StatusCode)
 	}
+}
 
-	log.Printf("%T: %v\n", handler.q, handler.q)
+func TestDesyncServe(t *testing.T) {
+	handler := &Desync{}
+
+	wg := &sync.WaitGroup{}
+	var port = "8080"
+
+	go handler.serve(port, wg)
+	_, err := net.DialTimeout("tcp", net.JoinHostPort("localhost", port), time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDesyncChan(t *testing.T) {
+
+	d := &Desync{make(chan *Message, 1), false}
+	defer close(d.q)
+
+	m := &Message{"https://example.com", "GET", nil, nil, false}
+
+	d.q <- m
+
+	wg := &sync.WaitGroup{}
+
+	wg.Add(1)
+	go d.readChan(wg)
+
 }
 
 func TestMessage(t *testing.T) {
-	m := &Message{"https://ya.ru", "GET", nil, nil, true}
+	m := &Message{"https://example.com", "GET", nil, nil, true}
 	resp := m.send()
 	if resp.StatusCode != 200 {
 		t.Fatalf("Received non-200 response: %d\n", resp.StatusCode)
