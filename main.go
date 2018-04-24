@@ -43,6 +43,7 @@ func (m *Message) send() *http.Response {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("%v\n", err)
+		return resp
 	}
 
 	if m.debug {
