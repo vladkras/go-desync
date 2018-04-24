@@ -8,7 +8,7 @@ Modern apps make multiple HTTP request during their life-cycle: loading data, qu
 You can avoid delays and shutdowns by delegating all request to desynchronizer. It will send your request asynchronously and return response when ready (if needed).
 
 ## Usage
-1. Run `./go-desync [--debug] [--port=8080]`
+1. Run `./go-desync [--debug] [--port=8080] [--cert=""]`
 
    desynchronizer will start server (port 8080 by default). Add `--debug` (false by default) flag too see all output
 2. Prepend your requests with desynchronizer endpoint like:
@@ -20,9 +20,19 @@ You can avoid delays and shutdowns by delegating all request to desynchronizer. 
 
  Desynchronizer **always** returns `200 OK` status even if your path or data is senseless.
 
+## Docker
+
+Thanks to [namsral/flag](https://github.com/namsral/flag) package use flags for CLI (`--debug`, `--port 8080`, `--cert=/etc/ssl`) or uppercase `--env` for Docker (`PORT=8080`, `DEBUG=true`, `CERT=/etc/ssl`).
+
+## HTTPS
+
+Define `cert` flag or `CERT` environment variable as path to your \*.crt and \*.key files. If found they will be checked and used for secured server.
+
 ## TODO
  * Callback url
  * Additional custom headers: (retry, ttl, etc.)
 
 ## License
 This project is licensed under [MIT License](https://github.com/vladkras/go-desync/blob/master/LICENSE) and developed by &copy; 2018, GraphitLab R&D
+
+This project uses [namsral/flag](https://github.com/namsral/flag) package licensed under [BSD 3-Clause License](https://github.com/namsral/flag/blob/master/LICENSE)

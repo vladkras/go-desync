@@ -2,12 +2,13 @@ package main
 
 import (
 	"bytes"
-	"flag"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/namsral/flag"
 )
 
 // Message for channel
@@ -77,8 +78,22 @@ func (d Desync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // HTTP Listner
-func (d Desync) serve(port string, wg *sync.WaitGroup) {
+func (d Desync) serve(port string, cert string, wg *sync.WaitGroup) {
 	defer wg.Done()
+
+	// check path to *.crt and *.key and use TLS if found
+	if cert != "" {
+		c := certs{path: cert}
+		err := c.GetCerts()
+		if err == nil {
+			// start secured server
+			log.Fatal(http.ListenAndServeTLS(":"+port, c.crt, c.key, d))
+			return
+		} else {
+			log.Printf("%s", err)
+		}
+	}
+
 	log.Fatal(http.ListenAndServe(":"+port, d))
 }
 
@@ -92,18 +107,19 @@ func (d *Desync) readChan(wg *sync.WaitGroup) {
 
 func main() {
 
-	var port string
+	var port, cert string
 	var wg sync.WaitGroup
 	var d = Desync{make(chan *Message), false}
 
 	flag.BoolVar(&d.debug, "debug", false, "enable verbose logging")
 	flag.StringVar(&port, "port", "8080", "port to listen")
+	flag.StringVar(&cert, "cert", "", "Path to .crt and .key")
 
 	flag.Parse()
 
 	// One for server and one for reader
 	wg.Add(2)
-	go d.serve(port, &wg)
+	go d.serve(port, cert, &wg)
 	go d.readChan(&wg)
 	wg.Wait()
 }

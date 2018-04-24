@@ -31,7 +31,7 @@ func TestDesyncServe(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	var port = "8080"
 
-	go handler.serve(port, wg)
+	go handler.serve(port, "", wg)
 	_, err := net.DialTimeout("tcp", net.JoinHostPort("localhost", port), time.Second)
 	if err != nil {
 		t.Fatal(err)
