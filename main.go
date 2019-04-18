@@ -11,19 +11,19 @@ import (
 	"github.com/namsral/flag"
 )
 
+var debug = false
+
 // Message for channel
 type Message struct {
 	url     string // /http(s)://url without 1st /
 	method  string
 	headers http.Header
 	body    []byte
-	debug   bool
 }
 
 // Desync main object
 type Desync struct {
-	q     chan *Message
-	debug bool
+	q chan *Message
 }
 
 // send Message body and headers to url using method
@@ -46,7 +46,7 @@ func (m *Message) send() *http.Response {
 		return resp
 	}
 
-	if m.debug {
+	if debug {
 		log.Printf("%T: %v\n", resp, resp)
 	}
 
@@ -69,9 +69,9 @@ func (d Desync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	m := &Message{r.URL.String()[1:], r.Method, r.Header, b, d.debug}
+	m := &Message{r.URL.String()[1:], r.Method, r.Header, b}
 
-	if d.debug {
+	if debug {
 		log.Printf("%T: %v\n", m, m)
 	}
 	// send Message to channel
@@ -79,23 +79,16 @@ func (d Desync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // HTTP Listner
-func (d Desync) serve(port string, cert string, wg *sync.WaitGroup) {
+func (d Desync) serve(port string, c certs, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	// check path to *.crt and *.key and use TLS if found
-	if cert != "" {
-		c := certs{path: cert}
-		err := c.GetCerts()
-		if err == nil {
-			// start secured server
-			log.Fatal(http.ListenAndServeTLS(":"+port, c.crt, c.key, d))
-			return
-		} else {
-			log.Printf("%s", err)
-		}
+	if c.crt != "" && c.key != "" {
+		// start secured server
+		log.Fatal(http.ListenAndServeTLS(":"+port, c.crt, c.key, d))
 	}
-
 	log.Fatal(http.ListenAndServe(":"+port, d))
+
 }
 
 // Recieves Message from channel and executes send()
@@ -110,17 +103,26 @@ func main() {
 
 	var port, cert string
 	var wg sync.WaitGroup
-	var d = Desync{make(chan *Message), false}
+	var d = Desync{make(chan *Message)}
+	var c = certs{}
 
-	flag.BoolVar(&d.debug, "debug", false, "enable verbose logging")
+	flag.BoolVar(&debug, "debug", false, "enable verbose logging")
 	flag.StringVar(&port, "port", "8080", "port to listen")
 	flag.StringVar(&cert, "cert", "", "Path to .crt and .key")
 
 	flag.Parse()
 
+	if cert != "" {
+		c.path = cert
+		err := c.GetCerts()
+		if err == nil {
+			log.Printf("%s", err)
+		}
+	}
+
 	// One for server and one for reader
 	wg.Add(2)
-	go d.serve(port, cert, &wg)
+	go d.serve(port, c, &wg)
 	go d.readChan(&wg)
 	wg.Wait()
 }

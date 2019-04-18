@@ -30,8 +30,9 @@ func TestDesyncServe(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	var port = "8080"
+	var c = certs{}
 
-	go handler.serve(port, "", wg)
+	go handler.serve(port, c, wg)
 	_, err := net.DialTimeout("tcp", net.JoinHostPort("localhost", port), time.Second)
 	if err != nil {
 		t.Fatal(err)
@@ -40,10 +41,10 @@ func TestDesyncServe(t *testing.T) {
 
 func TestDesyncChan(t *testing.T) {
 
-	d := &Desync{make(chan *Message, 1), false}
+	d := &Desync{make(chan *Message, 1)}
 	defer close(d.q)
 
-	m := &Message{"https://example.com", "GET", nil, nil, false}
+	m := &Message{"https://example.com", "GET", nil, nil}
 
 	d.q <- m
 
@@ -55,7 +56,7 @@ func TestDesyncChan(t *testing.T) {
 }
 
 func TestMessage(t *testing.T) {
-	m := &Message{"https://example.com", "GET", nil, nil, true}
+	m := &Message{"https://example.com", "GET", nil, nil}
 	resp := m.send()
 	if resp.StatusCode != 200 {
 		t.Fatalf("Received non-200 response: %d\n", resp.StatusCode)
